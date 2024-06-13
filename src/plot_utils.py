@@ -24,11 +24,11 @@ def lomb_scargle(data: NDArray, out_path: str = None) -> float:
     @returns        The most likely period value."""
     __modify_params()
 
-    plt.figure(figsize=(4, 4), dpi=150)
+    plt.figure(figsize=(3, 3), dpi=150)
     frequency, power = LombScargle(data[:, 0], data[:, 1]).autopower()
-    plt.plot(frequency, power, label="Frequency power")
+    plt.plot(2 * frequency, power, label="Frequency power")
 
-    plt.xlim(0, 1)
+    plt.xlim(0, 2)
     plt.xlabel("Frequency [days]")
     plt.ylabel("Power")
     plt.legend()
@@ -39,4 +39,4 @@ def lomb_scargle(data: NDArray, out_path: str = None) -> float:
     else:
         plt.savefig(out_path)
 
-    return power[frequency.argmax()]
+    return frequency[power.argmax()] * 2
