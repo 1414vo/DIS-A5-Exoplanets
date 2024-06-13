@@ -9,6 +9,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 import pickle
 from scipy.stats import norm, uniform, loguniform
+import batman
 
 
 def substract_activity(
@@ -137,3 +138,23 @@ class Prior:
         elif self.type == "gaussian":
             return norm.ppf(u, loc=self.bounds[0], scale=self.bounds[1])
         return None
+
+
+def batman_mod(theta, t):
+    t0, per, incl, ecc, w, aRs, Rp_Rs, u1, u2 = theta
+
+    params = batman.TransitParams()  # object to store transit parameters
+
+    params.t0 = t0  # time of inferior conjunction
+    params.per = per  # orbital period
+    params.rp = Rp_Rs  # planet radius (in units of stellar radii)
+    params.a = aRs  # semi-major axis (in units of stellar radii)
+    params.inc = incl  # orbital inclination (in degrees)
+    params.ecc = ecc  # eccentricity
+    params.w = w  # longitude of periastron (in degrees)
+    params.limb_dark = "quadratic"  # limb darkening model
+    params.u = [u1, u2]  # limb darkening coefficients [u1, u2]
+
+    mod = batman.TransitModel(params, t)
+    flux_mod = mod.light_curve(params)
+    return flux_mod
