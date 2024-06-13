@@ -141,7 +141,7 @@ class Prior:
 
 
 def batman_mod(theta, t):
-    t0, per, incl, ecc, w, aRs, Rp_Rs, u1, u2 = theta
+    t0, per, incl, aRs, Rp_Rs, u1, u2, ecc, w = theta
 
     params = batman.TransitParams()  # object to store transit parameters
 
@@ -158,3 +158,31 @@ def batman_mod(theta, t):
     mod = batman.TransitModel(params, t)
     flux_mod = mod.light_curve(params)
     return flux_mod
+
+
+def loglikelihood(t, y, y_err, theta):
+    model_values = batman_mod(theta, t)
+
+    residuals = y - model_values
+
+    logL = -len(t) / 2.0 * np.log(2 * np.pi)
+    logL += -np.sum(np.log(y_err)) - np.sum(residuals**2 / (2 * y_err**2))
+    return logL
+
+
+def prior(x):
+    theta = []
+
+    theta.append(Prior("gaussian", (0, 1.0))(np.array(x[0])))  # Prior on t0
+    theta.append(Prior("gaussian", (5.4, 0.5))(np.array(x[1])))  # Prior on period[days]
+    theta.append(
+        Prior("uniform", (0.7 * 90, 1.0 * 90))(np.array(x[2]))
+    )  # Prior on inclination
+    theta.append(Prior("uniform"(2.0, 100.0))(np.array(x[3])))  # Prior on aRs
+    theta.append(Prior("log-uniform"(0.01, 0.3))(np.array(x[4])))  # Prioir on Rp/Rs
+    theta.append(Prior("uniform", (0.0, 1.0))(np.array(x[5])))  # Prior on u1
+    theta.append(Prior("uniform", (0.0, 1.0))(np.array(x[6])))  # Prior on u2
+    theta.append(Prior("uniform", (0.6, 1.0))(np.array(x[7])))  # Prior on ecc
+    theta.append(Prior("uniform", (-90, 90))(np.array(x[7])))  # Prior on w
+
+    return theta
