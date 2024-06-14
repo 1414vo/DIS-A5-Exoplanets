@@ -80,6 +80,9 @@ def substract_activity(
     with open(hyperparam_path, "wb") as f:
         pickle.dump(hyperparams, f)
 
+    for k in hyperparams.keys():
+        print(f"{k} = {hyperparams[k].mean()} +- {hyperparams[k].std()}")
+
 
 class Prior:
     """! A class for modelling prior distributions and sampling from them.
