@@ -2,6 +2,7 @@ from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 from astropy.timeseries import LombScargle
 from matplotlib import rcParams
+import numpy as np
 
 
 def __modify_params():
@@ -40,3 +41,27 @@ def lomb_scargle(data: NDArray, out_path: str = None) -> float:
         plt.savefig(out_path)
 
     return frequency[power.argmax()] * 2
+
+
+def box_plot_periodogram(periodogram, out_path: str = None) -> None:
+    # extract the period, duration, time, and depth of the best-fit transit
+    period = periodogram.period[np.argmax(periodogram.power)]
+
+    # Plot the periodogram
+
+    _, ax = plt.subplots(1, 1, figsize=(6, 2))
+    ax.plot(periodogram.period, periodogram.power, "k", lw=0.5)
+    ax.set_xlim(periodogram.period.min(), periodogram.period.max())
+    ax.set_xlabel("Period [days]")
+    ax.set_ylabel("Log-likelihood")
+
+    # Highlight the harmonics of the peak period
+    ax.axvline(period, alpha=0.4, lw=4)
+    for n in range(2, 10):
+        ax.axvline(n * period, alpha=0.4, lw=1, linestyle="dashed")
+        ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed")
+
+    if out_path is None:
+        plt.show()
+    else:
+        plt.savefig(out_path)
