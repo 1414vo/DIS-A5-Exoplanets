@@ -38,15 +38,18 @@ if __name__ == "__main__":
         (data[:, 0] > 2158),
     ]
 
+    outlier_mask = data[:, 1] > 1.015
+
     for i, component_mask in enumerate(component_masks):
         print(
             f"Fitting component {i + 1} of size {np.sum(component_mask & (~transit_mask))}"
         )
-        component_data = data[component_mask]
+        mask = component_mask & ~outlier_mask
+        component_data = data[mask]
 
         substract_activity(
             component_data,
-            transit_mask[component_mask],
+            transit_mask[mask],
             f"{args.data_path}/ex1_filtered.txt",
             f"{args.out_path}/hyperparams.pkl",
             reset=i == 0,
