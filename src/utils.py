@@ -178,16 +178,24 @@ def batman_model(theta: ArrayLike, t: ArrayLike, fix_period: float = None) -> Ar
     return flux_mod
 
 
-def loglikelihood(t, y, y_err, theta):
+def loglikelihood(
+    t: ArrayLike,
+    y: ArrayLike,
+    y_err: ArrayLike,
+    theta: ArrayLike,
+    fix_period: float = None,
+) -> float:
     """! Computes the log likelihood for a given set of parameters.
 
-    @param t        The timestamps of the measured data.
-    @param y        The measured normalized flux.
-    @param y_err    The errors in the normalized flux.
-    @param theta    The set of parameters describing the light curve.
+    @param t            The timestamps of the measured data.
+    @param y            The measured normalized flux.
+    @param y_err        The errors in the normalized flux.
+    @param theta        The set of parameters describing the light curve.
+    @param fix_period   A value to which to fix the transit period. If None, expects the period
+    to be part of the parameter set.
 
     @returns        The log-likelihood for the model given the data."""
-    model_values = batman_model(theta, t)
+    model_values = batman_model(theta, t, fix_period=fix_period)
     residuals = y - model_values
     logL = -len(t) / 2.0 * np.log(2 * np.pi)
     logL += -np.sum(np.log(y_err)) - np.sum(residuals**2 / (2 * y_err**2))
@@ -221,10 +229,11 @@ def prior(x: ArrayLike, sample_period=False) -> List:
     return theta
 
 
-def summarize_dynesty_results(results, has_period: bool = False) -> None:
+def summarize_dynesty_results(results, t0_init=0, has_period: bool = False) -> None:
     """! Utility function for summarizing the dynesty nested sampling results.
 
     @param results      The results object from the dynesty sampling.
+    @param t0_init      The calculated shift in T_0.
     @param has-period   Whether the period was fit as part of the curve.
     """
     weights = np.exp(results["logwt"] - results["logz"][-1])
@@ -234,13 +243,15 @@ def summarize_dynesty_results(results, has_period: bool = False) -> None:
     dynesty_samples = resample_equal(samples, weights)
 
     # print summary
-    par = [np.mean(dynesty_samples[:, i]) for i in range(len(8))]
-    t0, incl, a, rp, u1, u2, ecc, w = par
+    param_means = [np.mean(dynesty_samples[:, i]) for i in range(8)]
+    t0, incl, a, rp, u1, u2, ecc, w = param_means
     t0_err, incl_err, a_err, rp_err, u1_err, u2_err, ecc_err, w_err = [
-        np.quantile(dynesty_samples[:, i], [0.16, 0.84]) for i in range(len(8))
+        np.quantile(dynesty_samples[:, i], [0.16, 0.84]) for i in range(8)
     ]
 
-    print(f"T0 = {t0:10.6f} + {t0_err[1] - t0:8.6f}- {t0 - t0_err[0]:8.6f} BJD")
+    print(
+        f"T0 = {t0 + t0_init:10.6f} + {t0_err[1] - t0:8.6f}- {t0 - t0_err[0]:8.6f} BJD"
+    )
     print(
         f"Inclination = {incl:5.2f} + {incl_err[1] - incl:5.2f} - {incl - incl_err[0]:5.2f} deg"
     )
@@ -257,6 +268,8 @@ def summarize_dynesty_results(results, has_period: bool = False) -> None:
         print(
             f"P = {per:6.4f} + {per_err[1] - per:6.4f} - {per - per_err[0]:6.4f} days"
         )
+
+    return param_means
 
 
 def compute_period_t0(
@@ -282,4 +295,4 @@ def compute_period_t0(
     print(f"P = {fit[0][0]:.6f} +- {fit[1][0,0]**0.5:.6f} days")
     print("--------------------------\n")
 
-    return fit[0]
+    return fit[0], results
