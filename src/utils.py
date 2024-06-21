@@ -10,9 +10,9 @@ from dynesty.utils import resample_equal
 import numpy as np
 import batman
 import pickle
-from scipy.stats import norm, uniform, loguniform
 from numpy.typing import ArrayLike
 from typing import List, Tuple
+from .priors import Prior
 
 
 def substract_activity(
@@ -62,7 +62,7 @@ def substract_activity(
         "A": [gp.kernel_.k1.k1.k1.get_params()["constant_value"]],
         "P": [gp.kernel_.k1.k2.get_params()["periodicity"]],
         "gamma": [2 / gp.kernel_.k1.k2.get_params()["length_scale"] ** 2],
-        "length_scale": [2 / gp.kernel_.k1.k1.k2.get_params()["length_scale"] ** 2],
+        "length_scale": [gp.kernel_.k1.k1.k2.get_params()["length_scale"]],
     }
 
     if not reset:
@@ -81,68 +81,9 @@ def substract_activity(
         pickle.dump(hyperparams, f)
 
     for k in hyperparams.keys():
-        print(f"{k} = {hyperparams[k].mean()} +- {hyperparams[k].std()}")
-
-
-class Prior:
-    """! A class for modelling prior distributions and sampling from them.
-
-    @param type     The type of prior. Currently supports the "uniform", "log-uniform" (Jeffrey's),
-    and "gaussian" priors.
-    @param bounds   Any relevant parameters for the distribution. Includes bounds for uniform distribution
-    or mean and std for the Gaussian"""
-
-    def __init__(self, type, bounds):
-        """! Creates a Prior object for a parameter.
-
-        @param type     The type of prior. Currently supports the "uniform", "log-uniform" (Jeffrey's),
-        and "gaussian" priors.
-        @param bounds   Any relevant parameters for the distribution. Includes bounds for uniform distribution
-        or mean and std for the Gaussian"""
-
-        assert type in [
-            "uniform",
-            "log-uniform",
-            "gaussian",
-        ], 'Possible Prior types include "uniform", "log-uniform" or "gaussian"'
-        self.bounds = bounds
-        self.type = type
-
-    def nll(self, X: ArrayLike) -> float:
-        """! Computes the negative log probability for a set of points.
-
-        @param X    The input data.
-        @returns    The negative log probability"""
-
-        if not hasattr(X, "__iter__"):
-            X = np.array([X])
-
-        if self.type == "uniform":
-            return -np.sum(
-                uniform.logpdf(
-                    X, loc=self.bounds[0], scale=self.bounds[1] - self.bounds[0]
-                )
-            )
-        elif self.type == "log-uniform":
-            return -np.sum(loguniform.logpdf(X, self.bounds[0], self.bounds[1]))
-        elif self.type == "gaussian":
-            return -np.sum(norm.logpdf(X, loc=self.bounds[0], scale=self.bounds[1]))
-        return None
-
-    def __call__(self, u: float) -> float:
-        """! Samples from the prior using the PPF of the distribution.
-
-        @param u    A number in the [0, 1] region.
-        @returns    The sampled parameter."""
-        if self.type == "uniform":
-            return uniform.ppf(
-                u, loc=self.bounds[0], scale=self.bounds[1] - self.bounds[0]
-            )
-        elif self.type == "log-uniform":
-            return loguniform.ppf(u, self.bounds[0], self.bounds[1])
-        elif self.type == "gaussian":
-            return norm.ppf(u, loc=self.bounds[0], scale=self.bounds[1])
-        return None
+        print(
+            f"{k} = {np.array(hyperparams[k]).mean()} +- {np.array(hyperparams[k]).std()}"
+        )
 
 
 def batman_model(theta: ArrayLike, t: ArrayLike, fix_period: float = None) -> ArrayLike:
@@ -219,7 +160,7 @@ def prior(x: ArrayLike, sample_period=False) -> List:
     theta.append(Prior("log-uniform", (0.01, 0.3))(np.array(x[3])))  # Prioir on Rp/Rs
     theta.append(Prior("uniform", (0.0, 1.0))(np.array(x[4])))  # Prior on u1
     theta.append(Prior("uniform", (0.0, 1.0))(np.array(x[5])))  # Prior on u2
-    theta.append(Prior("uniform", (0, 0.7))(np.array(x[6])))  # Prior on ecc
+    theta.append(Prior("beta", (0.867, 3.03))(np.array(x[6])))  # Prior on ecc
     theta.append(Prior("uniform", (-180, 180))(np.array(x[7])))  # Prior on w
     if sample_period:
         theta.append(
@@ -244,13 +185,14 @@ def summarize_dynesty_results(results, t0_init=0, has_period: bool = False) -> N
 
     # print summary
     param_means = [np.mean(dynesty_samples[:, i]) for i in range(8)]
+    param_means[0] += t0_init
     t0, incl, a, rp, u1, u2, ecc, w = param_means
     t0_err, incl_err, a_err, rp_err, u1_err, u2_err, ecc_err, w_err = [
         np.quantile(dynesty_samples[:, i], [0.16, 0.84]) for i in range(8)
     ]
 
     print(
-        f"T0 = {t0 + t0_init:10.6f} + {t0_err[1] - t0:8.6f}- {t0 - t0_err[0]:8.6f} BJD"
+        f"T0 = {t0:10.6f} + {t0_err[1] + t0_init - t0:8.6f}- {t0 - t0_err[0] - t0_init:8.6f} BJD"
     )
     print(
         f"Inclination = {incl:5.2f} + {incl_err[1] - incl:5.2f} - {incl - incl_err[0]:5.2f} deg"

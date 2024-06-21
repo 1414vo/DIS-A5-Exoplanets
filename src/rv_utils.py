@@ -1,7 +1,7 @@
 import numpy as np
 import radvel.kepler as kepler
 import radvel
-from .utils import Prior
+from .priors import Prior
 
 gp_explength_mean = 31.0 * np.sqrt(2.0)
 gp_explength_unc = 10.0 * np.sqrt(2.0)
