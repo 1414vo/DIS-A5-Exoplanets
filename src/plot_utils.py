@@ -1,4 +1,3 @@
-from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 from astropy.timeseries import LombScargle
 from matplotlib import rcParams
@@ -17,22 +16,43 @@ def __modify_params():
     rcParams["text.latex.preamble"] = r"\usepackage{amsfonts}"
 
 
-def lomb_scargle(data: NDArray, out_path: str = None) -> float:
+def lomb_scargle(
+    t: ArrayLike,
+    x: ArrayLike,
+    x_err: ArrayLike,
+    out_path: str = None,
+    detrend: bool = False,
+    freqs: ArrayLike = None,
+) -> float:
     """! Plots the Lomb Scargle periodogram for the given data and
     retrieves the most likely period.
 
-    @param data     The light curve time and flux.
+    @param t        Times of observation.
+    @param x        Observed values.
+    @param x_err    Errors in observed values.
+    @param detrend  Whether to detrend the timeseries (uses a polynomial of degree 2)
+    @param freqs    A set of frequency values.
     @param out_path Where to store the plot.
 
     @returns        The most likely period value."""
     __modify_params()
+    if detrend:
+        x = x.copy()
+        a, b, c = np.polyfit(t, x, deg=2)
+        x = x - a * t**2 - b * t - c
 
     plt.figure(figsize=(3, 3), dpi=150)
-    frequency, power = LombScargle(data[:, 0], data[:, 1]).autopower()
-    plt.plot(2 * frequency, power, label="Frequency power")
+    if freqs is None:
+        frequency, power = LombScargle(t, x, x_err).autopower()
+    else:
+        frequency = freqs
+        power = LombScargle(t, x, x_err).power(frequency)
+    plt.plot(frequency, power, label="Frequency power")
 
-    plt.xlim(0, 2)
-    plt.xlabel("Frequency [days]")
+    if freqs is None:
+        plt.xlim(0, 2)
+
+    plt.xlabel(r"Frequency [$days^{-1}$]")
     plt.ylabel("Power")
     plt.legend()
     plt.tight_layout()
@@ -42,7 +62,7 @@ def lomb_scargle(data: NDArray, out_path: str = None) -> float:
     else:
         plt.savefig(out_path)
 
-    return frequency[power.argmax()] * 2
+    return 1 / frequency[power.argmax()]
 
 
 def box_plot_periodogram(periodogram, out_path: str = None) -> None:
@@ -117,6 +137,7 @@ def plot_section_fits(og_data, filtered_data, fit_params, masks, out_path=None):
             alpha=0.3,
         )
         axs[0].set_ylabel("Normalized flux")
+        axs[0].set_ylim(None, 1.01)
 
     X = np.linspace(filtered_data[0, 0], filtered_data[-1, 0], 2000)
     axs[1].scatter(
