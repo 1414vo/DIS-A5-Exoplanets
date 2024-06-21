@@ -67,4 +67,4 @@ if __name__ == "__main__":
             sample="rwalk",
         )
         sampler.run_nested(dlogz=1e-3, print_progress=args.print_progress)
-        # print(f'{n_planets} planet(s): log(Z) = {}')
+        print(f"{n_planets} planet(s): log(Z) = {sampler.results.logz[-1]}")

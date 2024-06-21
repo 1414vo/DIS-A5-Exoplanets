@@ -12,7 +12,7 @@ RUN pre-commit install
 RUN conda create -n radvel python=3.9
 RUN conda activate radvel
 RUN pip install -r requirements.txt
-RUN pip install radvel
+RUN pip install radvel scikit-learn
 RUN conda deactivate radvel
 
 EXPOSE 8888
