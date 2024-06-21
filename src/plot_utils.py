@@ -3,7 +3,6 @@ from astropy.timeseries import LombScargle
 from matplotlib import rcParams
 import numpy as np
 from numpy.typing import ArrayLike
-from .utils import batman_model
 
 
 def __modify_params():
@@ -66,12 +65,13 @@ def lomb_scargle(
 
 
 def box_plot_periodogram(periodogram, out_path: str = None) -> None:
+    __modify_params()
     # extract the period, duration, time, and depth of the best-fit transit
     period = periodogram.period[np.argmax(periodogram.power)]
 
     # Plot the periodogram
 
-    _, ax = plt.subplots(1, 1, figsize=(6, 3), dpi=300)
+    _, ax = plt.subplots(1, 1, figsize=(6, 4), dpi=300)
     ax.plot(periodogram.period, periodogram.power, "k", lw=0.5)
     ax.set_xlim(periodogram.period.min(), periodogram.period.max())
     ax.set_xlabel("Period [days]")
@@ -92,6 +92,8 @@ def box_plot_periodogram(periodogram, out_path: str = None) -> None:
 def plot_folded_transit(
     time: ArrayLike, flux: ArrayLike, fit_params: ArrayLike, out_path: str = None
 ) -> None:
+    from .utils import batman_model
+
     __modify_params()
 
     plt.figure(figsize=(4, 4), dpi=300)
@@ -111,6 +113,8 @@ def plot_folded_transit(
 
 
 def plot_section_fits(og_data, filtered_data, fit_params, masks, out_path=None):
+    from .utils import batman_model
+
     __modify_params()
     _, axs = plt.subplots(2, 1, figsize=(8, 4), sharex=True, dpi=300)
 
@@ -148,6 +152,28 @@ def plot_section_fits(og_data, filtered_data, fit_params, masks, out_path=None):
     axs[1].set_ylim(0.995, 1.005)
 
     plt.xlabel("BJD - 2457000 [days]")
+    plt.tight_layout()
+
+    # Save or show dependent on the output path
+    if out_path is None:
+        plt.show()
+    else:
+        plt.savefig(out_path)
+
+
+def plot_trend(
+    time: ArrayLike, y: ArrayLike, out_path: str = None, name="Feature"
+) -> None:
+    __modify_params()
+
+    plt.figure(figsize=(4, 4), dpi=300)
+
+    plt.scatter(time, y, alpha=0.5, color="gray", s=1)
+    fit = np.polyfit(time, y, deg=1)
+    plt.plot(time, fit[0] * time + fit[1], color="tab:orange", linestyle="--")
+    plt.ylabel(name)
+
+    plt.xlabel("BJD - X [days]")
     plt.tight_layout()
 
     # Save or show dependent on the output path
