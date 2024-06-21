@@ -17,7 +17,9 @@ if __name__ == "__main__":
 
     data = np.loadtxt(f"{args.data_path}/ex1_tess_lc.txt")
 
-    period = lomb_scargle(data, f"{args.out_path}/ex1_periodogram.png")
+    period = lomb_scargle(
+        data[:, 0], data[:, 1], data[:, 3], f"{args.out_path}/ex1_periodogram.png"
+    )
     print("Lomb Scargle Periodogram estimation: ", period)
 
     data_r = np.arange(len(data))
